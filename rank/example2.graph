@@ -1,0 +1,53 @@
+(dp0
+S'External Site D'
+p1
+(dp2
+S'out'
+p3
+(lp4
+ssS'About'
+p5
+(dp6
+g3
+(lp7
+S'Home'
+p8
+assS'External Site A'
+p9
+(dp10
+g3
+(lp11
+ssS'External Site C'
+p12
+(dp13
+g3
+(lp14
+ssS'Links'
+p15
+(dp16
+g3
+(lp17
+g8
+ag9
+aS'External Site B'
+p18
+ag12
+ag1
+assg18
+(dp19
+g3
+(lp20
+ssg8
+(dp21
+g3
+(lp22
+g5
+aS'Product'
+p23
+ag15
+assg23
+(dp24
+g3
+(lp25
+g8
+ass.

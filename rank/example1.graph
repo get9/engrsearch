@@ -1,0 +1,28 @@
+(dp0
+S'Page D'
+p1
+(dp2
+S'out'
+p3
+(lp4
+S'Page C'
+p5
+assg5
+(dp6
+g3
+(lp7
+S'Page A'
+p8
+assS'Page B'
+p9
+(dp10
+g3
+(lp11
+g5
+assg8
+(dp12
+g3
+(lp13
+g9
+ag5
+ass.
