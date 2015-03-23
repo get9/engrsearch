@@ -10,6 +10,8 @@ from scrapy.utils.url import canonicalize_url
 
 from urlparse import urljoin, urlsplit
 
+TAGS_TO_EXTRACT = ['p']
+
 # Main spider class
 class EngrSpider(CrawlSpider):
     name = 'engrspider'
@@ -24,22 +26,19 @@ class EngrSpider(CrawlSpider):
         #'cs.uky.edu',
     ]
 
-    # Note: including 'allow_domains' keyword arg replaces 'allowed_domains'
-    # class variable.
-    #rules = (
-    #    Rule(LinkExtractor(deny=r'\/events\/category\/alumni\/\d+-\d*', allow_domains=good_domains, process_value=fix_link), callback='parse_link',
-    #         follow=True),
-    #)
-    
     # Default callback for parsing response from fetch
     #def parse_link(self, response):
     def parse(self, response):
-        #print("url = {}".format(response.url))
         # Get a bunch of these errors on endpoint pages; just make outlinks
         # empty if we do.
         links = []
         if hasattr(response, 'xpath') and callable(getattr(response, 'xpath')):
             links = response.xpath('//a/@href').extract()
+
+        # Extract text from TAGS_TO_EXTRACT in the response
+        text = ""
+        for tag in TAGS_TO_EXTRACT:
+            for e in response.xpath('//{}'.format(tag))
 
         # Make every URL absolute and canonical so we can index, fetch, and hash
         # appropriately
