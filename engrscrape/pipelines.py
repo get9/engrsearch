@@ -41,12 +41,12 @@ class SqlitePipeline(object):
     """ A pipeline for handling database operations with the SQLite database """
 
     def __init__(self):
-        self.dbpool = adbapi.ConnectionPool('sqlite3', 'links.db')
+        self.dbpool = adbapi.ConnectionPool('sqlite3', 'links.db', check_same_thread=False)
 
     def process_item(self, item, spider):
-        query = self.dbpool.runInteraction(add_url_and_outlinks, item)
-        query.addErrback(self._handle_error, item['url'])
-        return item
+        def handle_error(url):
+            log.msg("Could not add {} to database".format(url), level=log.WARNING)
 
-    def _handle_error(self, url):
-        log.msg("Could not add {} to database".format(url), level=log.WARNING)
+        query = self.dbpool.runInteraction(add_url_and_outlinks, item)
+        query.addErrback(handle_error, item['url'])
+        return item

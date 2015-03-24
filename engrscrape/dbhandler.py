@@ -10,8 +10,9 @@ def add_url_and_outlinks(curs, item):
     if curs.fetchone():
         raise DropItem("{} already in database".format(item['url']))
     else:
-        add_url = "INSERT INTO urls VALUES (?, ?)"
-        curs.execute(add_url, (item['xhash'], item['url']))
+        add_url = "INSERT INTO urls VALUES (?, ?, ?)"
+        # Need sqlite3.Binary() so that we can put the compressed data in the db
+        curs.execute(add_url, (item['xhash'], item['url'], sqlite3.Binary(item['compressed_text'])))
         add_outlinks = "INSERT INTO linkgraph VALUES (?, ?)"
         inserts = [(item['xhash'], l) for l in item['outlinks']]
 
@@ -26,7 +27,8 @@ def create_db(conn):
     create_urls = """
         CREATE TABLE IF NOT EXISTS urls (
             hash TEXT PRIMARY KEY,
-            url TEXT
+            url TEXT,
+            data BLOB
         )
         """
     create_linkgraph = """
