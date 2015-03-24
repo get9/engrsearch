@@ -5,7 +5,7 @@ from scrapy.exceptions import DropItem
 from twisted.enterprise import adbapi
 
 from engrscrape.dbhandler import add_url_and_outlinks, create_db
-from engrscrape.util import in_domains
+from engrscrape.util import in_domains, fix_link
 
 from urlparse import urlsplit
 
@@ -44,6 +44,8 @@ class SqlitePipeline(object):
         self.dbpool = adbapi.ConnectionPool('sqlite3', 'links.db', check_same_thread=False)
 
     def process_item(self, item, spider):
+        item['url'] = item['url'].strip().rstrip('/')
+        item['xhash'] = xxh64(item['url']).hexdigest()
         def handle_error(url):
             log.msg("Could not add {} to database".format(url), level=log.WARNING)
 
