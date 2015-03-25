@@ -153,4 +153,4 @@ if __name__ == '__main__':
 
     # Print out top 10 ranked pages
     for i in sorted(h_pr_tuples, key=lambda x: x[1], reverse=True)[:int(sys.argv[3])]:
-        print("{:<50}".format(hash2url(i[0], dbfile)))
+        print("{:<50}\t{}".format(hash2url(i[0], dbfile), i[1]))
