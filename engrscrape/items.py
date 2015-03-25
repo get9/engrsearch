@@ -5,7 +5,7 @@ class URLItem(Item):
     url = Field()
     xhash = Field()
     outlinks = Field()
-    compressed_data = Field()
+    compressed_text = Field()
 
     # Override this so the item doesn't get printed in the log
     def __repr__(self):
