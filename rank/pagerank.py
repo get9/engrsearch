@@ -45,8 +45,6 @@ def compute_s(hashes, outlinks):
         # This part computes H matrix
         else:
             for o in outlinks[h]:
-                if o not in hashes:
-                    continue
                 S[hashes[o], hashes[h]] = 1.0 / len(outlinks[h])
 
     # Return S = HA matrix
@@ -61,22 +59,19 @@ def compute_g(alpha, S, one):
     return (alpha * S) + ((1 - alpha) * one)
 
 # Get PageRank of all pages by running power method
-def run_power_method(G, N, sigma):
+def run_power_method(G, N, iters):
     # Initialization of I array
     I = np.full((N, 1), (1.0 / N), dtype=float)
     diff = 1.0
-    #for i in range(iters):
     i = 0
-    while diff > sigma:
-        #print("iter = {}".format(i))
+    for i in range(iters):
         oldI = I
         I = np.dot(G, I)
-        diff = np.max(I - oldI)
-        #print("diff = {}".format(diff))
-        i += 1
+        diff = np.linalg.norm(I - oldI)
 
     # Return PageRanks of all pages
-    print("num iters: {}".format(i))
+    print("num iters: {}".format(iters))
+    print("diff = {}".format(diff))
     return I
 
 # Make a list of pairs of URLs and their associated PageRanks
@@ -86,12 +81,12 @@ def make_hash_pr_tuples(hashes, pageranks):
 # Import data from db
 def from_db(dbfile):
     # Structures to return; list of hashes
-    outlinks = defaultdict(list)
+    outlinks = defaultdict(set)
     # outlinks looks like:
     #
     #     {
-    #         page1: [outlink, ...],
-    #         page2: [outlink, ...],
+    #         page1: (outlink, ...),
+    #         page2: (outlink, ...),
     #         ...
     #     }
     #
@@ -106,13 +101,15 @@ def from_db(dbfile):
     with conn:
         curs = conn.cursor()
         curs.execute(get_hashes)
-        hashes = [l[0] for l in curs.fetchall()]    
+        hashes = sorted([l[0] for l in curs.fetchall()])
         hashes = dict(zip(hashes, range(len(hashes))))
         curs.execute(get_outlinks)
         for t in curs.fetchall():
-            outlinks[t[0]].append(t[1])
+            outlinks[t[0]].add(t[1])
+        # Include extra filter to make sure there are no links that aren't in
+        # hashes
         for t in outlinks:
-            outlinks[t] = sorted(outlinks[t])
+            outlinks[t] = sorted(filter(lambda h: h in hashes, outlinks[t]))
         return hashes, outlinks
 
 # Get URL associated with hash
@@ -149,11 +146,11 @@ if __name__ == '__main__':
 
     # Compute PageRanks via power method of 100 iterations
     print("Computing I")
-    pageranks = run_power_method(G, N, 5e-11)
+    pageranks = run_power_method(G, N, 100)
 
     # Get tuples of (hash, pr) tuples
     h_pr_tuples = make_hash_pr_tuples(hashes, pageranks)
 
     # Print out top 10 ranked pages
     for i in sorted(h_pr_tuples, key=lambda x: x[1], reverse=True)[:int(sys.argv[3])]:
-        print("{:<50}\t{}".format(hash2url(i[0], dbfile), i[1]))
+        print("{:<50}".format(hash2url(i[0], dbfile)))
