@@ -20,6 +20,7 @@ def add_url_and_outlinks(curs, item):
         # an endpoint page (i.e. pdf, image, etc)
         if inserts:
             curs.executemany(add_outlinks, inserts)
+    print(item['url'])
     return item
 
 # Creates the database

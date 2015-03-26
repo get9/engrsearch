@@ -1,4 +1,5 @@
 import sqlite3
+from xxhash import xxh64
 
 from scrapy import log
 from scrapy.exceptions import DropItem

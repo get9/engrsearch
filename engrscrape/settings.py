@@ -34,3 +34,7 @@ DOWNLOAD_TIMEOUT = 10
 
 # Set log file
 LOG_FILE = 'engrspider.log'
+
+# Set max number of retries to 1 (if we didn't get it before, we probably won't
+# get it on the second time around
+RETRY_TIMES = 1

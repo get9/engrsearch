@@ -62,7 +62,6 @@ class EngrSpider(CrawlSpider):
         item['xhash'] = gethash(response.url)
         item['outlinks'] = set(gethash(l) for l in links)
         item['compressed_text'] = zlib.compress(' '.join(text))
-        print(item['url'])
         yield item
         for l in links:
             yield(Request(l))

@@ -120,6 +120,13 @@ def hash2url(xhash, dbfile):
         curs.execute(get_url, (xhash,))
         return curs.fetchone()[0]
 
+# Add pageranks to database
+def add_ranks_to_db(dbfile, tuples):
+    add_ranks = "UPDATE urls SET pagerank = ? WHERE hash = ?"
+    with sqlite3.connect(dbfile) as conn:
+        with closing(conn.cursor()) as curs:
+            curs.executemany(add_ranks, tuples)
+
 # main function
 if __name__ == '__main__':
     if len(sys.argv) < 4:
@@ -148,8 +155,9 @@ if __name__ == '__main__':
     print("Computing I")
     pageranks = run_power_method(G, N, 100)
 
-    # Get tuples of (hash, pr) tuples
+    # Get tuples of (hash, pr) tuples and add them to database
     h_pr_tuples = make_hash_pr_tuples(hashes, pageranks)
+    add_ranks_to_db(dbfile, h_pr_tuples)
 
     # Print out top 10 ranked pages
     for i in sorted(h_pr_tuples, key=lambda x: x[1], reverse=True)[:int(sys.argv[3])]:
