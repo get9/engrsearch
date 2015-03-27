@@ -49,7 +49,7 @@ def create_inverted_index(pairs):
 # Add all pairs of (word, docID) to the db
 def add_inverted_index_to_db(curs, index):
     # Need to decode to utf-8 to insert into sqlite correctly...
-    pairs = [(w.decode('utf-8'), d) for w, docs in index.iteritems() for d in docs]
+    pairs = [(w, d) for w, docs in index.iteritems() for d in docs]
     add_pair = "INSERT INTO inverted_index (word, hash) VALUES (?, ?)"
     curs.executemany(add_pair, pairs)
 

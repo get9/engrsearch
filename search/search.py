@@ -55,28 +55,29 @@ def main():
 
     # Need to compute intersection of all documents from the powerset of terms.
     # Do this by going through each group in the powerset, 
-    docgroups = list()
+    docgroups = defaultdict(list)
     for combination in reversed(list(powerset(searchterms))):
         # Get the documents that contain each term in each term group
         docs = map(lambda t: docsforterm[t], combination)
 
         # Gets the intersection of returned documents for combination
-        docgroups.append(docs[0].intersection(*docs))
-
-    # Since intersections of many things will probably return no docs, remove
-    # empty elements
-    docgroups = filter(None, docgroups)
+        docgroups[len(combination)].extend(list(docs[0].intersection(*docs)))
 
     # Sort each set in list based on PageRank
     pageranks = get_pageranks(curs)
-    for i in range(len(docgroups)):
-        docgroups[i] = sorted(docgroups[i], key=lambda d: pageranks[d])
+    for k in docgroups:
+        docgroups[k] = sorted(docgroups[k], key=lambda d: pageranks[d])
 
-    # Merge list of sets into one giant list of documents
-    docgroups = list(chain.from_iterable(docgroups))
+    # Merge dict of lists into one giant list of documents
+    sortedlist = []
+    for k in reversed(docgroups.keys()):
+        sortedlist.extend(docgroups[k])
+
+    # Filter any empty elements out from the list
+    sortedlist = filter(None, sortedlist)
 
     # Return top N results
-    for i in range(min(len(docgroups), N)):
-        print(get_url(curs, docgroups[i]))
+    for i in range(min(len(sortedlist), N)):
+        print(get_url(curs, sortedlist[i]))
 
 main()

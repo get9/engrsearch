@@ -11,7 +11,7 @@ from scrapy.utils.url import canonicalize_url
 
 from urlparse import urljoin, urlsplit
 
-TAGS_TO_EXTRACT = ['title']
+TAGS_TO_EXTRACT = ['title', 'p', 'h1', 'h2', 'h3']
 
 # Main spider class
 class EngrSpider(CrawlSpider):

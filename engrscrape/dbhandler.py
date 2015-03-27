@@ -22,14 +22,18 @@ def add_url_and_outlinks(curs, item):
     else:
         add_url = "INSERT INTO urls VALUES (?, ?, ?)"
         # Need sqlite3.Binary() so that we can put the compressed data in the db
-        curs.execute(add_url, (item['xhash'], item['url'], sqlite3.Binary(item['compressed_text'])))
-        add_outlinks = "INSERT INTO linkgraph VALUES (?, ?)"
-        inserts = [(item['xhash'], l) for l in item['outlinks']]
+        try:
+            curs.execute(add_url, (item['xhash'], item['url'], sqlite3.Binary(item['compressed_text'])))
+            add_outlinks = "INSERT INTO linkgraph VALUES (?, ?)"
+            inserts = [(item['xhash'], l) for l in item['outlinks']]
 
-        # Check if there are any links to insert. There won't be in the case of
-        # an endpoint page (i.e. pdf, image, etc)
-        if inserts:
-            curs.executemany(add_outlinks, inserts)
+            # Check if there are any links to insert. There won't be in the case of
+            # an endpoint page (i.e. pdf, image, etc)
+            if inserts:
+                curs.executemany(add_outlinks, inserts)
+        except Exception as e:
+            print(e)
+
     print(item['url'])
     return item
 
@@ -39,7 +43,8 @@ def create_db(conn):
         CREATE TABLE IF NOT EXISTS urls (
             hash TEXT PRIMARY KEY,
             url TEXT,
-            data BLOB
+            data BLOB,
+            pagerank REAL
         )
         """
     create_linkgraph = """
