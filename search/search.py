@@ -6,6 +6,7 @@ import sqlite3
 from itertools import chain, combinations
 from collections import defaultdict
 from contextlib import closing
+from search_util import normalize
 
 # Returns the power set of a given search query
 # Augmented to remove the empty set as the first item in the powerset
@@ -34,13 +35,13 @@ def get_url(curs, xhash):
     return curs.fetchone()[0]
 
 def main():
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 4:
         print("Usage:")
-        print("    {} dbfile 'search query ...'".format(sys.argv[0]))
+        print("    {} dbfile 'search query ...' nresults".format(sys.argv[0]))
         sys.exit(1)
 
     dbfile = sys.argv[1]
-    searchterms = sys.argv[2].split()
+    searchterms = map(lambda w: normalize(w), sys.argv[2].split())
     N = int(sys.argv[3])
 
     # Database access
@@ -69,13 +70,13 @@ def main():
     # Sort each set in list based on PageRank
     pageranks = get_pageranks(curs)
     for i in range(len(docgroups)):
-        docgroups[i] = sorted(docgroups[i], key=lambda d: pagerank[d])
+        docgroups[i] = sorted(docgroups[i], key=lambda d: pageranks[d])
 
     # Merge list of sets into one giant list of documents
     docgroups = list(chain.from_iterable(docgroups))
 
     # Return top N results
-    for i in range(N):
-        print(get_url(curs, docgroup[i]))
+    for i in range(min(len(docgroups), N)):
+        print(get_url(curs, docgroups[i]))
 
 main()

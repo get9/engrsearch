@@ -2,13 +2,23 @@ import sqlite3
 
 from scrapy.exceptions import DropItem
 from contextlib import closing
+from urlparse import urlsplit
 
 # Adds an item to the database and its associated outlinks
 def add_url_and_outlinks(curs, item):
-    check_url = "SELECT * FROM urls WHERE hash = ?"
-    curs.execute(check_url, (item['xhash'],))
+    # Check if URL is already in the database via hashing
+    check_hash = "SELECT * FROM urls WHERE hash = ?"
+    curs.execute(check_hash, (item['xhash'],))
     if curs.fetchone():
         raise DropItem("{} already in database".format(item['url']))
+
+    # Check if we have the http/https version in the db already. If so, don't add it
+    check_http_vers = "SELECT * FROM urls WHERE url LIKE ?"
+    url_without_scheme = '%' + ''.join(urlsplit(item['url'])[1:])
+    curs.execute(check_http_vers, (url_without_scheme,))
+    if curs.fetchone():
+        raise DropItem("{} already in database".format(item['url']))
+
     else:
         add_url = "INSERT INTO urls VALUES (?, ?, ?)"
         # Need sqlite3.Binary() so that we can put the compressed data in the db
