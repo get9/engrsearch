@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+import zlib
 import sqlite3
 import numpy as np
 
@@ -25,16 +26,15 @@ def get_doc_termcount(curs, dochash):
 # Computes the TF vector for the given document and returns it as a
 # numpy array of length |terms| in corpus
 def get_tf_vec(curs, dochash, searchterms, allterms):
-    d_t_pairs = [(dochash, q) for q in searchterms]
-    get_term_count_pairs = "SELECT word, count(word) FROM inverted_index WHERE hash = ? AND word = ? ORDER BY word"
-    curs.executemany(get_term_count_pairs, d_t_pairs)
-    term_count = dict(curs.fetchall())
-
-    # Fill missing portions of vector with 0's 
-    tfvec = map(lambda w: 0 if w not in term_count else term_count[w], allterms)
+    tfvec = np.zeros(len(allterms), dtype=np.float32)
+    get_counts = "SELECT count(word) FROM inverted_index WHERE hash = ? AND word = ? GROUP BY word ORDER BY word"
+    for q in searchterms:
+        curs.execute(get_counts, (dochash, q))
+        c = curs.fetchone()
+        tfvec[allterms.index(q)] += c[0] if c else 0
 
     # Change to numpy array, scale by sum of terms in document
-    return np.asarray(tfvec, dtype=float32) / get_doc_termcount(curs, dochash)
+    return tfvec / (get_doc_termcount(curs, dochash) + 1)
 
 # Compute IDF vector and return as Numpy array
 def get_idf_vec(curs, ndocs):
@@ -42,7 +42,7 @@ def get_idf_vec(curs, ndocs):
     curs.execute(get_idf)
     idf = list(chain.from_iterable(curs.fetchall()))
     idf = map(lambda x: log((1 + ndocs) / x), idf)
-    return np.asarray(idf, dtype=float32)
+    return np.asarray(idf, dtype=np.float32)
 
 # Returns a list of all dochashes
 def get_all_docs(curs):
@@ -58,7 +58,7 @@ def get_num_docs_for_term(curs, term):
 
 # Computes q TFIDF vector
 def get_q_tf_vec(curs, searchterms, allterms):
-    tfvec = np.zeros(allterms)
+    tfvec = np.zeros(len(allterms))
     for q in searchterms:
         tfvec[allterms.index(q)] = searchterms.count(q) / float(len(searchterms))
     return tfvec
@@ -91,19 +91,22 @@ def main():
 
     # Can calculate IDF vector just once (technically could cache this later on)
     alldocs = get_all_docs(curs)
+    allterms = get_all_terms(curs)
     idfvec = get_idf_vec(curs, len(alldocs))
 
     # Calculate query TFIDF vector
-    q_tfidf = get_q_tf_vec * idfvec
+    q_tfidf = get_q_tf_vec(curs, searchterms, allterms) * idfvec
 
     # Compute TF vectors for documents
     tfidf_ranks = []
     allterms = get_all_terms(curs)
-    for d in alldocs
+    for d in alldocs:
         tfvec = get_tf_vec(curs, d, searchterms, allterms)
         doc_tfidf = tfvec * idfvec
         # Compute cosine between query and doc, put it in ranks
-        tfidf_ranks.append(np.dot(q_tfidf, doc_tfidf) / (np.linalg.norm(q_tfidf) * np.linalg.norm(doc_tfidf)))
+        docnorm = np.linalg.norm(doc_tfidf) or 1
+        qnorm = np.linalg.norm(q_tfidf) or 1
+        tfidf_ranks.append(np.dot(q_tfidf, doc_tfidf) / (qnorm * docnorm))
 
     # Compute final ranking of all documents for this query
     final_ranks = map(lambda x: x[0] * x[1], zip(get_pageranks(curs), tfidf_ranks))
@@ -113,6 +116,6 @@ def main():
     
     # Return top N results
     for i in range(min(len(hash_ranks), N)):
-        print(get_url(curs, hash_ranks[i]))
+        print(get_url(curs, hash_ranks[i][0]))
 
 main()

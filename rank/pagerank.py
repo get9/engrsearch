@@ -77,7 +77,7 @@ def run_power_method(G, N, iters):
 
 # Make a list of pairs of URLs and their associated PageRanks
 def make_hash_pr_tuples(hashes, pageranks):
-    return zip(sorted(hashes.keys()), pageranks.flatten().tolist())
+    return zip(pageranks.flatten().tolist(), sorted(hashes.keys()))
 
 # Import data from db
 def from_db(dbfile):
@@ -161,10 +161,10 @@ if __name__ == '__main__':
     pageranks = run_power_method(G, N, 100)
 
     # Get tuples of (hash, pr) tuples and add them to database
-    h_pr_tuples = make_hash_pr_tuples(hashes, pageranks)
+    pr_h_tuples = make_hash_pr_tuples(hashes, pageranks)
     #h_pr_tuples = scale_ranks(h_pr_tuples, N)
-    add_ranks_to_db(dbfile, h_pr_tuples)
+    add_ranks_to_db(dbfile, pr_h_tuples)
 
     # Print out top 10 ranked pages
-    for i in sorted(h_pr_tuples, key=lambda x: x[1], reverse=True)[:int(sys.argv[3])]:
-        print("{:<50}\t{}".format(hash2url(i[0], dbfile), i[1]))
+    for i in sorted(pr_h_tuples, key=lambda x: x[0], reverse=True)[:int(sys.argv[3])]:
+        print("{:<50}\t{}".format(hash2url(i[1], dbfile), i[0]))
