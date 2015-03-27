@@ -34,7 +34,7 @@ class EngrSpider(CrawlSpider):
         # Get a bunch of these errors on endpoint pages; just make outlinks
         # empty if we do.
         links = []
-        text = set()
+        text = list()
         if hasattr(response, 'xpath') and callable(getattr(response, 'xpath')):
             links = response.xpath('//a/@href').extract()
 
@@ -44,7 +44,7 @@ class EngrSpider(CrawlSpider):
                     # XXX Could have some kind of weighting based on where the text
                     # comes from
                     for w in e.encode('utf-8').split():
-                        text.add(w)
+                        text.append(w)
 
         # Make every URL absolute and canonical so we can index, fetch, and hash
         # appropriately

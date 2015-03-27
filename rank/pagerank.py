@@ -162,7 +162,7 @@ if __name__ == '__main__':
 
     # Get tuples of (hash, pr) tuples and add them to database
     h_pr_tuples = make_hash_pr_tuples(hashes, pageranks)
-    h_pr_tuples = scale_ranks(h_pr_tuples, N)
+    #h_pr_tuples = scale_ranks(h_pr_tuples, N)
     add_ranks_to_db(dbfile, h_pr_tuples)
 
     # Print out top 10 ranked pages

@@ -2,31 +2,72 @@
 
 import sys
 import sqlite3
+import numpy as np
 
-from itertools import chain, combinations
+from itertools import chain
 from collections import defaultdict
 from contextlib import closing
 from search_util import normalize
+from math import log
 
-# Returns the power set of a given search query
-# Augmented to remove the empty set as the first item in the powerset
-# From: "https://docs.python.org/2/library/itertools.html#recipes"
-def powerset(searchterms):
-    s = list(searchterms)
-    return chain.from_iterable(combinations(s, r) for r in range(1, len(s) + 1))
+# Gets all terms from the document corpus
+def get_all_terms(curs):
+    get_terms = "SELECT DISTINCT word FROM inverted_index"
+    curs.execute(get_terms)
+    return list(chain.from_iterable(curs.fetchall()))
 
-# Gets the documents associated with each term as a set (to support fast
-# intersection operations of document sets)
-def get_docs_for_term(curs, term):
-    get_docs = "SELECT hash FROM inverted_index WHERE word = ?"
-    curs.execute(get_docs, (term,))
-    return set(chain.from_iterable(curs.fetchall()))
+# Get term count for document
+def get_doc_termcount(curs, dochash):
+    get_count = "SELECT data FROM urls WHERE hash = ?"
+    curs.execute(get_count, (dochash,))
+    return len(zlib.decompress(curs.fetchone()[0]))
 
-# Returns a dictionary of the pageranks of all URLs (indexed by hash)
+# Computes the TF vector for the given document and returns it as a
+# numpy array of length |terms| in corpus
+def get_tf_vec(curs, dochash, searchterms, allterms):
+    d_t_pairs = [(dochash, q) for q in searchterms]
+    get_term_count_pairs = "SELECT word, count(word) FROM inverted_index WHERE hash = ? AND word = ? ORDER BY word"
+    curs.executemany(get_term_count_pairs, d_t_pairs)
+    term_count = dict(curs.fetchall())
+
+    # Fill missing portions of vector with 0's 
+    tfvec = map(lambda w: 0 if w not in term_count else term_count[w], allterms)
+
+    # Change to numpy array, scale by sum of terms in document
+    return np.asarray(tfvec, dtype=float32) / get_doc_termcount(curs, dochash)
+
+# Compute IDF vector and return as Numpy array
+def get_idf_vec(curs, ndocs):
+    get_idf = "SELECT COUNT(word) FROM inverted_index GROUP BY word"
+    curs.execute(get_idf)
+    idf = list(chain.from_iterable(curs.fetchall()))
+    idf = map(lambda x: log((1 + ndocs) / x), idf)
+    return np.asarray(idf, dtype=float32)
+
+# Returns a list of all dochashes
+def get_all_docs(curs):
+    get_docs = "SELECT hash FROM urls ORDER BY hash"
+    curs.execute(get_docs)
+    return list(chain.from_iterable(curs.fetchall()))
+
+# Returns the number of documents containing a given word
+def get_num_docs_for_term(curs, term):
+    get_num_docs = "SELECT COUNT(hash) FROM inverted_index WHERE word = ?"
+    curs.execute(get_num_docs, (term,))
+    return curs.fetchone()[0]
+
+# Computes q TFIDF vector
+def get_q_tf_vec(curs, searchterms, allterms):
+    tfvec = np.zeros(allterms)
+    for q in searchterms:
+        tfvec[allterms.index(q)] = searchterms.count(q) / float(len(searchterms))
+    return tfvec
+    
+# Returns a vector of the pageranks of all URLs (indexed by hash)
 def get_pageranks(curs):
-    get_ranks = "SELECT hash, pagerank FROM urls"
+    get_ranks = "SELECT pagerank FROM urls ORDER BY hash"
     curs.execute(get_ranks)
-    return dict(curs.fetchall())
+    return list(chain.from_iterable(curs.fetchall()))
 
 # Return url associated with hash
 def get_url(curs, xhash):
@@ -48,35 +89,30 @@ def main():
     conn = sqlite3.connect(dbfile)
     curs = conn.cursor()
 
-    # Get the documents corresponding to this search term
-    docsforterm = dict()
-    for term in searchterms:
-        docsforterm[term] = get_docs_for_term(curs, term)
+    # Can calculate IDF vector just once (technically could cache this later on)
+    alldocs = get_all_docs(curs)
+    idfvec = get_idf_vec(curs, len(alldocs))
 
-    # Need to compute intersection of all documents from the powerset of terms.
-    # Do this by going through each group in the powerset, 
-    docgroups = list()
-    for combination in reversed(list(powerset(searchterms))):
-        # Get the documents that contain each term in each term group
-        docs = map(lambda t: docsforterm[t], combination)
+    # Calculate query TFIDF vector
+    q_tfidf = get_q_tf_vec * idfvec
 
-        # Gets the intersection of returned documents for combination
-        docgroups.append(docs[0].intersection(*docs))
+    # Compute TF vectors for documents
+    tfidf_ranks = []
+    allterms = get_all_terms(curs)
+    for d in alldocs
+        tfvec = get_tf_vec(curs, d, searchterms, allterms)
+        doc_tfidf = tfvec * idfvec
+        # Compute cosine between query and doc, put it in ranks
+        tfidf_ranks.append(np.dot(q_tfidf, doc_tfidf) / (np.linalg.norm(q_tfidf) * np.linalg.norm(doc_tfidf)))
 
-    # Since intersections of many things will probably return no docs, remove
-    # empty elements
-    docgroups = filter(None, docgroups)
+    # Compute final ranking of all documents for this query
+    final_ranks = map(lambda x: x[0] * x[1], zip(get_pageranks(curs), tfidf_ranks))
 
-    # Sort each set in list based on PageRank
-    pageranks = get_pageranks(curs)
-    for i in range(len(docgroups)):
-        docgroups[i] = sorted(docgroups[i], key=lambda d: pageranks[d])
-
-    # Merge list of sets into one giant list of documents
-    docgroups = list(chain.from_iterable(docgroups))
-
+    # Associate with hashes and sort
+    hash_ranks = sorted(zip(alldocs, final_ranks), key=lambda x: x[1])
+    
     # Return top N results
-    for i in range(min(len(docgroups), N)):
-        print(get_url(curs, docgroups[i]))
+    for i in range(min(len(hash_ranks), N)):
+        print(get_url(curs, hash_ranks[i]))
 
 main()
