@@ -23,6 +23,7 @@ import sqlite3
 import numpy as np
 
 from collections import defaultdict
+from contextlib import closing
 
 # Compute S = H + A matrix
 # hashes looks like:
@@ -127,6 +128,10 @@ def add_ranks_to_db(dbfile, tuples):
         with closing(conn.cursor()) as curs:
             curs.executemany(add_ranks, tuples)
 
+# Scale PageRanks based on number of entries
+def scale_ranks(tuples, N):
+    return map(lambda p: (p[0], p[1] * N), tuples)
+
 # main function
 if __name__ == '__main__':
     if len(sys.argv) < 4:
@@ -157,6 +162,7 @@ if __name__ == '__main__':
 
     # Get tuples of (hash, pr) tuples and add them to database
     h_pr_tuples = make_hash_pr_tuples(hashes, pageranks)
+    h_pr_tuples = scale_ranks(h_pr_tuples, N)
     add_ranks_to_db(dbfile, h_pr_tuples)
 
     # Print out top 10 ranked pages

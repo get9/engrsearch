@@ -6,6 +6,7 @@ import sys
 
 from collections import defaultdict
 from contextlib import closing
+from nltk.stem import PorterStemmer
 
 # List of common english stopwords from "http://www.ranks.nl/stopwords"
 STOP_WORDS = [
